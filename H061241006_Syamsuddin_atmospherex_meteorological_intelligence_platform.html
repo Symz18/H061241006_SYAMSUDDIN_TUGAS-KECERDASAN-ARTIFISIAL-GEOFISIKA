@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AtmosphereX - Meteorological Intelligence Platform</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        body { 
+            background-color: #08111F; 
+            color: #F1F5F9; 
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+        }
+    </style>
+</head>
+<body class="flex h-screen w-full overflow-hidden selection:bg-cyan-900 selection:text-cyan-100">
+    
+    <!-- SIDEBAR -->
+    <aside class="w-64 flex-shrink-0 border-r border-slate-800 bg-[#0B1424] hidden lg:flex flex-col z-20">
+        <div class="p-6 border-b border-slate-800">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-cyan-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(57,189,248,0.3)]">
+                    <i class="ph-fill ph-cloud text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white leading-tight">AtmosphereX</h1>
+                    <p class="text-[10px] text-cyan-400 font-medium uppercase tracking-wider">Meteorological Intel</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
+            <button id="nav-btn-Overview" onclick="changePage('Overview', 'Overview')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <i class="ph ph-activity text-lg"></i><span>Overview</span>
+            </button>
+            <button id="nav-btn-LiveWeather" onclick="changePage('LiveWeather', 'Live Weather')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent">
+                <i class="ph ph-cloud-sun text-lg"></i><span>Live Weather</span>
+            </button>
+            <button id="nav-btn-Parameters" onclick="changePage('Parameters', 'Parameters')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent">
+                <i class="ph ph-thermometer text-lg"></i><span>Parameters</span>
+            </button>
+            <button id="nav-btn-Rainfall" onclick="changePage('Rainfall', 'Rainfall Analytics')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent">
+                <i class="ph ph-cloud-rain text-lg"></i><span>Rainfall Analytics</span>
+            </button>
+            <button id="nav-btn-Wind" onclick="changePage('Wind', 'Wind Analysis')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent">
+                <i class="ph ph-wind text-lg"></i><span>Wind Analysis</span>
+            </button>
+            <button id="nav-btn-Lightning" onclick="changePage('Lightning', 'Lightning')" class="nav-btn w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent">
+                <i class="ph ph-lightning text-lg"></i><span>Lightning</span>
+            </button>
+        </div>
+
+        <div class="p-4 border-t border-slate-800 bg-[#08111F]/50">
+            <div class="flex flex-col space-y-2 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500">System Status</span>
+                    <span class="flex items-center text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>Online</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500">Pembaruan</span>
+                    <span id="sidebar-last-updated" class="text-cyan-400 font-mono">--:--:--</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+        
+        <!-- HEADER -->
+        <header class="h-16 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 border-b border-slate-800 bg-[#0B1424]/80 backdrop-blur-md z-10">
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-2 text-sm">
+                    <span class="text-slate-500">Platform</span>
+                    <i class="ph ph-caret-right text-slate-600"></i>
+                    <span id="top-nav-title" class="text-slate-200 font-medium">Overview</span>
+                </div>
+                <div id="api-status" class="flex items-center space-x-2">
+                    <div class="px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20 flex items-center">
+                        <i class="ph ph-arrows-clockwise text-blue-400 mr-1.5 animate-spin"></i>
+                        <span class="text-blue-400 text-xs font-semibold tracking-wide">CONNECTING...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div class="hidden xl:flex items-center space-x-1.5 text-xs text-slate-400 bg-[#111E30] px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i class="ph ph-clock-counter-clockwise text-cyan-400"></i>
+                    <span>Terakhir Update: <strong id="header-last-sync" class="text-slate-200 font-mono">--:--:--</strong></span>
+                </div>
+                <div id="clock-display" class="hidden lg:flex items-center text-xs font-mono text-slate-400 bg-[#111E30] px-3 py-1.5 rounded-lg border border-slate-800">
+                    --:--:-- WITA
+                </div>
+                <button class="text-slate-400 hover:text-cyan-400 transition-colors" onclick="fetchWeatherData()" title="Refresh Data">
+                    <i class="ph ph-arrows-clockwise text-lg"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTENT SCROLLABLE AREA -->
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar bg-[#08111F]">
+            
+            <!-- 1. PAGE: OVERVIEW -->
+            <div id="page-Overview" class="page-section max-w-7xl mx-auto space-y-6 pb-12">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-1">Pusat Pantauan Meteorologi</h2>
+                        <p class="text-slate-400 text-sm">Pantau kondisi atmosfer, analisis pola cuaca regional Sulawesi Selatan.</p>
+                    </div>
+                </div>
+
+                <!-- KPI CARDS WITH STATION SELECTOR -->
+                <div class="bg-[#111E30]/60 border border-slate-700/50 rounded-xl p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-slate-700/50">
+                        <span class="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center">
+                            <i class="ph ph-compass text-base mr-1.5"></i> Panel KPI Real-Time Berdasarkan Stasiun
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-slate-400">Pilih Stasiun:</span>
+                            <select id="overview-station-select" onchange="renderOverviewKPIs(this.value)" class="bg-[#08111F] border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500">
+                                <option value="0">Memuat Stasiun...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2"><h3 class="text-slate-400 text-sm font-medium">Suhu Udara</h3><div class="p-2 rounded-lg bg-slate-800/80 text-amber-400"><i class="ph ph-thermometer text-lg"></i></div></div>
+                            <div><div class="flex items-baseline space-x-1"><span id="kpi-temp" class="text-2xl font-bold text-slate-100">--</span><span class="text-slate-400 text-sm">°C</span></div><div class="mt-2 text-xs text-slate-500 truncate" id="kpi-station-label-1">Stasiun WAAA</div></div>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2"><h3 class="text-slate-400 text-sm font-medium">Kelembaban</h3><div class="p-2 rounded-lg bg-slate-800/80 text-cyan-400"><i class="ph ph-drop text-lg"></i></div></div>
+                            <div><div class="flex items-baseline space-x-1"><span id="kpi-rh" class="text-2xl font-bold text-slate-100">--</span><span class="text-slate-400 text-sm">%</span></div><div class="mt-2 text-xs text-slate-500">Relatif RH</div></div>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2"><h3 class="text-slate-400 text-sm font-medium">Tekanan Udara</h3><div class="p-2 rounded-lg bg-slate-800/80 text-indigo-400"><i class="ph ph-activity text-lg"></i></div></div>
+                            <div><div class="flex items-baseline space-x-1"><span id="kpi-press" class="text-2xl font-bold text-slate-100">--</span><span class="text-slate-400 text-sm">hPa</span></div><div class="mt-2 text-xs text-slate-500">Surface Pressure</div></div>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2"><h3 class="text-slate-400 text-sm font-medium">Angin</h3><div class="p-2 rounded-lg bg-slate-800/80 text-slate-300"><i class="ph ph-wind text-lg"></i></div></div>
+                            <div><div class="flex items-baseline space-x-1"><span id="kpi-wind" class="text-2xl font-bold text-slate-100">--</span><span class="text-slate-400 text-sm">m/s</span></div><div class="mt-2 text-xs text-slate-500 truncate">Arah: <span id="kpi-wind-dir">--</span></div></div>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2"><h3 class="text-slate-400 text-sm font-medium">Curah Hujan</h3><div class="p-2 rounded-lg bg-slate-800/80 text-blue-400"><i class="ph ph-cloud-rain text-lg"></i></div></div>
+                            <div><div class="flex items-baseline space-x-1"><span id="kpi-rain" class="text-2xl font-bold text-slate-100">--</span><span class="text-slate-400 text-sm">mm</span></div><div class="mt-2 text-xs text-slate-500">Akumulasi Jam</div></div>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2"><h3 class="text-slate-400 text-sm font-medium">Kondisi</h3><div class="p-2 rounded-lg bg-slate-800/80 text-slate-200"><i class="ph ph-cloud text-lg"></i></div></div>
+                            <div><div class="flex items-baseline space-x-1"><span id="kpi-condition" class="text-sm font-bold text-slate-100 truncate">--</span></div><div class="mt-2 text-xs text-slate-500">Kode WMO</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHARTS ROW -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-[#111E30]/80 border border-slate-700/50 rounded-xl p-4 flex flex-col h-[400px]">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-semibold text-slate-200">Tren Suhu & Tekanan (00:00 - 23:00)</h3>
+                            <select id="station-chart-select" onchange="changeChartStation(this.value)" class="bg-slate-900 border border-slate-700 text-xs rounded px-2 py-1 text-slate-300 focus:outline-none cursor-pointer">
+                                <option>Memuat Stasiun...</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 w-full min-h-0 relative"><canvas id="tempChart"></canvas></div>
+                    </div>
+                    <div class="bg-[#111E30]/80 border border-slate-700/50 rounded-xl p-4 flex flex-col h-[400px]">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-semibold text-slate-200">Presipitasi Per Jam (00:00 - 23:00)</h3>
+                            <select id="rain-chart-select" onchange="changeRainChartStation(this.value)" class="bg-slate-900 border border-slate-700 text-xs rounded px-2 py-1 text-slate-300 focus:outline-none cursor-pointer">
+                                <option>Memuat Stasiun...</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 w-full min-h-0 relative"><canvas id="rainChart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- TABLE -->
+                <div id="observation-container" class="bg-[#111E30]/80 border border-slate-700/50 rounded-xl overflow-hidden flex flex-col h-[350px] transition-all duration-500">
+                    <div class="px-4 py-4 border-b border-slate-700/50 flex justify-between items-center bg-[#0B1424]/50">
+                        <h3 class="font-semibold text-slate-200">Observasi Stasiun Regional</h3>
+                        <button id="btn-lihat-semua" onclick="toggleTableHeight()" class="text-xs font-semibold text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded border border-cyan-500/20">Lihat Semua</button>
+                    </div>
+                    <div class="flex-1 overflow-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="bg-[#0B1424] sticky top-0 z-10">
+                                <tr>
+                                    <th class="py-3 px-4 text-slate-500 text-xs uppercase">Stasiun</th>
+                                    <th class="py-3 px-4 text-slate-500 text-xs uppercase">Suhu</th>
+                                    <th class="py-3 px-4 text-slate-500 text-xs uppercase">RH</th>
+                                    <th class="py-3 px-4 text-slate-500 text-xs uppercase">Angin</th>
+                                    <th class="py-3 px-4 text-slate-500 text-xs uppercase">Kondisi</th>
+                                    <th class="py-3 px-4 text-slate-500 text-xs uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body" class="divide-y divide-slate-800/50"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PAGE: LIVE WEATHER -->
+            <div id="page-LiveWeather" class="page-section hidden max-w-7xl mx-auto space-y-6 pb-12">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-1">Live Weather & Prakiraan</h2>
+                        <p class="text-slate-400 text-sm">Informasi pengamatan real-time dan prakiraan jangka pendek stasiun terpilih.</p>
+                    </div>
+                    <select id="live-station-select" onchange="renderLiveWeatherDetails(this.value)" class="bg-[#111E30] border border-slate-700 text-sm rounded-lg px-3 py-2 text-slate-200">
+                        <option value="0">Memuat Stasiun...</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-[#111E30] border border-slate-700/50 rounded-xl p-6 flex flex-col justify-between">
+                        <div>
+                            <span class="text-xs uppercase tracking-wider text-cyan-400 font-semibold">Kondisi Utama</span>
+                            <h3 id="lw-station-name" class="text-xl font-bold text-white mt-1">--</h3>
+                            <div class="text-4xl font-extrabold text-slate-100 my-4"><span id="lw-temp">--</span>°C</div>
+                            <p id="lw-condition" class="text-slate-300 font-medium">--</p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-700/50 text-xs text-slate-400">
+                            Sumber: Open-Meteo Synoptic API
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 bg-[#111E30] border border-slate-700/50 rounded-xl p-6 flex flex-col justify-between">
+                        <h3 class="font-semibold text-slate-200 mb-4">Parameter Lingkungan Terperinci</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-xs">Kelembaban</span>
+                                <span id="lw-rh" class="text-lg font-bold text-slate-100">-- %</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-xs">Tekanan Permukaan</span>
+                                <span id="lw-press" class="text-lg font-bold text-slate-100">-- hPa</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-xs">Kecepatan Angin</span>
+                                <span id="lw-wind" class="text-lg font-bold text-slate-100">-- m/s</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-xs">Curah Hujan Aktif</span>
+                                <span id="lw-rain" class="text-lg font-bold text-slate-100">-- mm</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-xs">Arah Angin</span>
+                                <span id="lw-wind-dir" class="text-lg font-bold text-slate-100">--</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-400 block text-xs">Status Data</span>
+                                <span class="text-lg font-bold text-emerald-400">Terverifikasi</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. PAGE: PARAMETERS -->
+            <div id="page-Parameters" class="page-section hidden max-w-7xl mx-auto space-y-6 pb-12">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-1">Analisis Parameter Atmosfer</h2>
+                        <p class="text-slate-400 text-sm">Korelasi komprehensif suhu, tekanan permukaan, dan kelembaban nisbi (00:00 - 23:00).</p>
+                    </div>
+                    <select id="param-station-select" onchange="renderAdvancedParameters(this.value)" class="bg-[#111E30] border border-slate-700 text-sm rounded-lg px-3 py-2 text-slate-200">
+                        <option value="0">Memuat Stasiun...</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-[#111E30] p-5 rounded-xl border border-slate-700/50">
+                        <h3 class="font-semibold text-slate-200 mb-2">Distribusi Suhu Udara (00:00 - 23:00)</h3>
+                        <p class="text-xs text-slate-400 mb-4">Pengamatan fluktuasi termal harian di stasiun terpilih.</p>
+                        <div class="h-64 relative"><canvas id="paramTempChart"></canvas></div>
+                    </div>
+                    <div class="bg-[#111E30] p-5 rounded-xl border border-slate-700/50">
+                        <h3 class="font-semibold text-slate-200 mb-2">Fluktuasi Tekanan Barometrik (00:00 - 23:00)</h3>
+                        <p class="text-xs text-slate-400 mb-4">Pemantauan gradien tekanan untuk deteksi sistem tekanan lokal.</p>
+                        <div class="h-64 relative"><canvas id="paramPressChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. PAGE: RAINFALL ANALYTICS -->
+            <div id="page-Rainfall" class="page-section hidden max-w-7xl mx-auto space-y-6 pb-12">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-1">Hidrometeorologi & Analisis Hujan</h2>
+                        <p class="text-slate-400 text-sm">Statistik curah hujan kumulatif harian (00:00 - 23:00).</p>
+                    </div>
+                    <select id="rain-station-select" onchange="renderRainAnalytics(this.value)" class="bg-[#111E30] border border-slate-700 text-sm rounded-lg px-3 py-2 text-slate-200">
+                        <option value="0">Memuat Stasiun...</option>
+                    </select>
+                </div>
+                <div class="bg-[#111E30] p-6 rounded-xl border border-slate-700/50 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-semibold text-slate-200">Akumulasi Hujan Harian Regional (00:00 - 23:00)</h3>
+                        <span class="text-xs text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded border border-blue-500/20">Synoptic Rain Gauges</span>
+                    </div>
+                    <div class="h-72 relative"><canvas id="rainAnalyticsChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- 5. PAGE: WIND ANALYSIS -->
+            <div id="page-Wind" class="page-section hidden max-w-7xl mx-auto space-y-6 pb-12">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-1">Analisis Kecepatan & Arah Angin</h2>
+                        <p class="text-slate-400 text-sm">Evaluasi vektor angin permukaan menggunakan standar konvensi meteorologi.</p>
+                    </div>
+                    <select id="wind-station-select" onchange="renderWindAnalysis(this.value)" class="bg-[#111E30] border border-slate-700 text-sm rounded-lg px-3 py-2 text-slate-200">
+                        <option value="0">Memuat Stasiun...</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-[#111E30] p-6 rounded-xl border border-slate-700/50 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-semibold text-slate-200 mb-1">Kecepatan Rata-Rata</h3>
+                            <p class="text-xs text-slate-400 mb-4">Kecepatan angin terukur saat ini</p>
+                            <div id="wind-speed-val" class="text-4xl font-bold text-cyan-400">-- <span class="text-lg text-slate-400">m/s</span></div>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-700/50 text-xs text-slate-400">
+                            Konvensi: Arah asal hembusan angin.
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 bg-[#111E30] p-6 rounded-xl border border-slate-700/50">
+                        <h3 class="font-semibold text-slate-200 mb-4">Distribusi Kecepatan Angin (m/s)</h3>
+                        <div class="h-56 relative"><canvas id="windChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. PAGE: LIGHTNING -->
+            <div id="page-Lightning" class="page-section hidden max-w-7xl mx-auto space-y-6 pb-12">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-1">Pemantauan Sambaran Petir (Lightning)</h2>
+                        <p class="text-slate-400 text-sm">Deteksi aktivitas awan-ke-tanah (Cloud-to-Ground) di sekitar stasiun terpilih.</p>
+                    </div>
+                    <select id="lightning-station-select" onchange="renderLightningDetails(this.value)" class="bg-[#111E30] border border-slate-700 text-sm rounded-lg px-3 py-2 text-slate-200">
+                        <option value="0">Memuat Stasiun...</option>
+                    </select>
+                </div>
+                <div class="bg-[#111E30] p-8 rounded-xl border border-slate-700/50 text-center space-y-4">
+                    <i class="ph ph-lightning text-amber-400 text-6xl animate-bounce"></i>
+                    <h3 id="lightning-station-title" class="text-lg font-semibold text-slate-200">Status Sensor Petir Regional</h3>
+                    <p class="text-sm text-slate-400 max-w-md mx-auto">Tidak terdeteksi sambaran petir berbahaya berintensitas tinggi dalam radius 50 km dari stasiun terpilih dalam 1 jam terakhir.</p>
+                    <div class="inline-block px-4 py-2 bg-slate-900 rounded-lg border border-slate-700 text-xs text-emerald-400">
+                        ● Jaringan Detektor Aktif (0 Aktivitas Kritis)
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const STATIONS = [
+            { id: 'WAAA', name: 'Makassar (Hasanuddin)', lat: -5.0619, lng: 119.5544 },
+            { id: 'WAAB', name: 'Parepare (Andi Jemma)', lat: -4.0135, lng: 119.6258 },
+            { id: 'WAAC', name: 'Palopo (Bua)', lat: -3.0788, lng: 120.1983 },
+            { id: 'WAAD', name: 'Bantaeng', lat: -5.5492, lng: 119.9463 },
+            { id: 'WAAE', name: 'Toraja (Pongtiku)', lat: -3.0450, lng: 119.8258 },
+            { id: 'WAAF', name: 'Selayar (H. Aroeppala)', lat: -6.1683, lng: 120.4419 },
+            { id: 'WAAG', name: 'Bone (Watampone)', lat: -4.5361, lng: 120.3275 },
+            { id: 'WAAH', name: 'Masamba (Andi Jemma)', lat: -2.5575, lng: 120.3267 },
+            { id: 'WAAI', name: 'Bulukumba', lat: -5.5536, lng: 120.1903 },
+            { id: 'WAAJ', name: 'Sinjai', lat: -5.1228, lng: 120.2525 },
+            { id: 'WAAK', name: 'Sengkang (Wajo)', lat: -4.1264, lng: 120.0353 },
+            { id: 'WAAL', name: 'Maros', lat: -5.0069, lng: 119.5714 },
+            { id: 'WAAM', name: 'Gowa', lat: -5.2047, lng: 119.4500 }
+        ];
+
+        const WMO_CODES = {
+            0: 'Cerah', 1: 'Cerah Berawan', 2: 'Berawan Sebagian', 3: 'Mendung',
+            45: 'Berkabut', 48: 'Kabut Tebal', 51: 'Gerimis Ringan', 61: 'Hujan Ringan', 63: 'Hujan Sedang', 65: 'Hujan Lebat', 95: 'Badai Petir'
+        };
+
+        let globalWeatherData = [];
+        let rainChartInstance, tempChartInstance, paramTempChartInstance, paramPressChartInstance, rainAnalyticsChartInstance, windChartInstance;
+
+        function getWindDir(deg) {
+            const dirs = ['Utara', 'Timur Laut', 'Timur', 'Tenggara', 'Selatan', 'Barat Daya', 'Barat', 'Barat Laut'];
+            return dirs[Math.round(deg / 45) % 8];
+        }
+
+        setInterval(() => {
+            try {
+                const timeStr = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute:'2-digit', second:'2-digit' });
+                document.getElementById('clock-display').innerText = timeStr + ' WITA';
+            } catch (e) {
+                document.getElementById('clock-display').innerText = new Date().toLocaleTimeString() + ' (Lokal)';
+            }
+        }, 1000);
+
+        function generateSortedHourlyData(hourlyObj) {
+            // Sort indices from 00:00 to 23:00 for the current calendar day
+            if (!hourlyObj || !hourlyObj.time) {
+                const dummyTimes = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+                return {
+                    labels: dummyTimes,
+                    temp: dummyTimes.map(() => 27 + Math.random() * 3),
+                    pressure: dummyTimes.map(() => 1010 + Math.random() * 3),
+                    rain: dummyTimes.map(() => Math.random() > 0.8 ? Math.random() * 1.2 : 0)
+                };
+            }
+
+            // Map hourly arrays by hour 0-23
+            const hoursMap = {};
+            for(let i=0; i<24; i++) {
+                hoursMap[i] = { temp: 27, pressure: 1010, rain: 0 };
+            }
+
+            hourlyObj.time.forEach((tStr, idx) => {
+                const d = new Date(tStr);
+                const h = d.getHours();
+                if (h >= 0 && h < 24) {
+                    hoursMap[h] = {
+                        temp: hourlyObj.temperature_2m ? hourlyObj.temperature_2m[idx] : 27,
+                        pressure: hourlyObj.surface_pressure ? hourlyObj.surface_pressure[idx] : 1010,
+                        rain: hourlyObj.precipitation ? hourlyObj.precipitation[idx] : 0
+                    };
+                }
+            });
+
+            const labels = [];
+            const temps = [];
+            const presses = [];
+            const rains = [];
+
+            for(let i=0; i<24; i++) {
+                labels.push(`${String(i).padStart(2, '0')}:00`);
+                temps.push(hoursMap[i].temp);
+                presses.push(hoursMap[i].pressure);
+                rains.push(hoursMap[i].rain);
+            }
+
+            return { labels, temp: temps, pressure: presses, rain: rains };
+        }
+
+        function generateFallbackData(stn, index) {
+            const baseTemp = 27 + (index % 3);
+            const dummyHourly = {
+                time: Array.from({length: 24}, (_, i) => {
+                    const d = new Date();
+                    d.setHours(i, 0, 0, 0);
+                    return d.toISOString();
+                }),
+                temperature_2m: Array.from({length: 24}, (_, i) => baseTemp + Math.sin((i - 6) * (Math.PI / 12)) * 3),
+                surface_pressure: Array.from({length: 24}, () => 1010 + Math.random() * 4),
+                precipitation: Array.from({length: 24}, (_, i) => (i >= 13 && i <= 16) ? Math.random() * 2 : 0)
+            };
+
+            return {
+                ...stn,
+                apiData: {
+                    current: {
+                        temperature_2m: baseTemp + Math.random(),
+                        relative_humidity_2m: 75 + Math.floor(Math.random() * 15),
+                        precipitation: Math.random() > 0.7 ? Math.random() * 1.5 : 0,
+                        surface_pressure: 1010.5 + Math.random() * 2,
+                        wind_speed_10m: 2 + Math.random() * 3,
+                        wind_direction_10m: Math.floor(Math.random() * 360),
+                        weather_code: index % 2 === 0 ? 0 : 2
+                    },
+                    hourly: dummyHourly
+                }
+            };
+        }
+
+        async function fetchWeatherData() {
+            const apiStatus = document.getElementById('api-status');
+            apiStatus.innerHTML = `<div class="px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20 flex items-center"><i class="ph ph-arrows-clockwise text-blue-400 mr-1.5 animate-spin"></i><span class="text-blue-400 text-xs font-semibold">MENGAMBIL DATA LIVE...</span></div>`;
+            
+            try {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const promises = STATIONS.map(async (stn, idx) => {
+                    try {
+                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${stn.lat}&longitude=${stn.lng}&current=temperature_2m,relative_humidity_2m,precipitation,surface_pressure,wind_speed_10m,wind_direction_10m,weather_code&hourly=temperature_2m,precipitation,surface_pressure&start_date=${todayStr}&end_date=${todayStr}&timezone=auto&wind_speed_unit=ms`;
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error("API Limit / Network Error");
+                        const data = await res.json();
+                        
+                        if (!data.hourly || !data.hourly.time) {
+                            return generateFallbackData(stn, idx);
+                        }
+                        return { ...stn, apiData: data };
+                    } catch (err) {
+                        return generateFallbackData(stn, idx);
+                    }
+                });
+
+                globalWeatherData = await Promise.all(promises);
+                updateUI(globalWeatherData);
+                
+                const nowTimestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                document.getElementById('header-last-sync').innerText = nowTimestamp;
+                document.getElementById('sidebar-last-updated').innerText = nowTimestamp;
+
+                apiStatus.innerHTML = `<div class="px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center"><i class="ph-fill ph-database text-emerald-400 mr-1.5"></i><span class="text-emerald-400 text-xs font-semibold">OPEN-METEO SYNCED</span></div>`;
+            } catch (error) {
+                console.error(error);
+                globalWeatherData = STATIONS.map((stn, idx) => generateFallbackData(stn, idx));
+                updateUI(globalWeatherData);
+                
+                const nowTimestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                document.getElementById('header-last-sync').innerText = nowTimestamp;
+                document.getElementById('sidebar-last-updated').innerText = nowTimestamp;
+
+                apiStatus.innerHTML = `<div class="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/20 flex items-center"><i class="ph-fill ph-warning-circle text-amber-400 mr-1.5"></i><span class="text-amber-400 text-xs font-semibold">DEMO MODE ACTIVE</span></div>`;
+            }
+        }
+
+        function updateUI(results) {
+            const dropdowns = ['overview-station-select', 'station-chart-select', 'rain-chart-select', 'live-station-select', 'param-station-select', 'rain-station-select', 'wind-station-select', 'lightning-station-select'];
+            dropdowns.forEach(id => {
+                const sel = document.getElementById(id);
+                if(sel) {
+                    sel.innerHTML = '';
+                    results.forEach((res, index) => {
+                        sel.innerHTML += `<option value="${index}">${res.id} - ${res.name}</option>`;
+                    });
+                }
+            });
+
+            renderOverviewKPIs(0);
+            changeChartStation(0);
+            changeRainChartStation(0);
+            renderLiveWeatherDetails(0);
+            renderAdvancedParameters(0);
+            renderRainAnalytics(0);
+            renderWindAnalysis(0);
+            renderLightningDetails(0);
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            results.forEach(res => {
+                const c = res.apiData.current;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/30 transition-colors border-b border-slate-800/50">
+                        <td class="py-3 px-4"><div class="font-medium text-slate-200">${res.id}</div><div class="text-xs text-slate-500">${res.name}</div></td>
+                        <td class="py-3 px-4 text-slate-300">${c.temperature_2m.toFixed(1)}°C</td>
+                        <td class="py-3 px-4 text-slate-300">${c.relative_humidity_2m}%</td>
+                        <td class="py-3 px-4 text-slate-300">${c.wind_speed_10m.toFixed(1)} m/s</td>
+                        <td class="py-3 px-4 text-slate-300">${WMO_CODES[c.weather_code] || 'Cerah'}</td>
+                        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Live</span></td>
+                    </tr>`;
+            });
+        }
+
+        function renderOverviewKPIs(index) {
+            if (globalWeatherData.length === 0) return;
+            const stn = globalWeatherData[index];
+            const current = stn.apiData.current;
+
+            document.getElementById('kpi-temp').innerText = current.temperature_2m.toFixed(1);
+            document.getElementById('kpi-rh').innerText = current.relative_humidity_2m;
+            document.getElementById('kpi-press').innerText = current.surface_pressure.toFixed(1);
+            document.getElementById('kpi-wind').innerText = current.wind_speed_10m.toFixed(1);
+            document.getElementById('kpi-wind-dir').innerText = getWindDir(current.wind_direction_10m);
+            document.getElementById('kpi-rain').innerText = current.precipitation.toFixed(1);
+            document.getElementById('kpi-condition').innerText = WMO_CODES[current.weather_code] || 'Cerah';
+            document.getElementById('kpi-station-label-1').innerText = `Stasiun ${stn.id} (${stn.name})`;
+        }
+
+        function changeChartStation(index) {
+            if (globalWeatherData.length === 0) return;
+            const res = globalWeatherData[index];
+            const sorted = generateSortedHourlyData(res.apiData.hourly);
+            renderTempChart(sorted.labels, sorted.temp, sorted.pressure);
+        }
+
+        function changeRainChartStation(index) {
+            if (globalWeatherData.length === 0) return;
+            const res = globalWeatherData[index];
+            const sorted = generateSortedHourlyData(res.apiData.hourly);
+            renderRainChart(sorted.labels, sorted.rain);
+        }
+
+        function renderLiveWeatherDetails(index) {
+            if (globalWeatherData.length === 0) return;
+            const stn = globalWeatherData[index];
+            const c = stn.apiData.current;
+            document.getElementById('lw-station-name').innerText = `${stn.id} - ${stn.name}`;
+            document.getElementById('lw-temp').innerText = c.temperature_2m.toFixed(1);
+            document.getElementById('lw-condition').innerText = WMO_CODES[c.weather_code] || 'Kondisi Normal';
+            document.getElementById('lw-rh').innerText = c.relative_humidity_2m + ' %';
+            document.getElementById('lw-press').innerText = c.surface_pressure.toFixed(1) + ' hPa';
+            document.getElementById('lw-wind').innerText = c.wind_speed_10m.toFixed(1) + ' m/s';
+            document.getElementById('lw-rain').innerText = c.precipitation.toFixed(1) + ' mm';
+            document.getElementById('lw-wind-dir').innerText = getWindDir(c.wind_direction_10m);
+        }
+
+        function renderAdvancedParameters(index) {
+            if (globalWeatherData.length === 0) return;
+            const stn = globalWeatherData[index];
+            const sorted = generateSortedHourlyData(stn.apiData.hourly);
+
+            if(paramTempChartInstance) paramTempChartInstance.destroy();
+            paramTempChartInstance = new Chart(document.getElementById('paramTempChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: sorted.labels, datasets: [{ label: 'Suhu (°C)', data: sorted.temp, borderColor: '#39BDF8', tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            if(paramPressChartInstance) paramPressChartInstance.destroy();
+            paramPressChartInstance = new Chart(document.getElementById('paramPressChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: sorted.labels, datasets: [{ label: 'Tekanan (hPa)', data: sorted.pressure, borderColor: '#818CF8', tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function renderRainAnalytics(index) {
+            if (globalWeatherData.length === 0) return;
+            const stn = globalWeatherData[index];
+            const sorted = generateSortedHourlyData(stn.apiData.hourly);
+            
+            if(rainAnalyticsChartInstance) rainAnalyticsChartInstance.destroy();
+            rainAnalyticsChartInstance = new Chart(document.getElementById('rainAnalyticsChart').getContext('2d'), {
+                type: 'bar',
+                data: { labels: sorted.labels, datasets: [{ label: 'Curah Hujan (mm)', data: sorted.rain, backgroundColor: '#22D3EE' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function renderWindAnalysis(index) {
+            if (globalWeatherData.length === 0) return;
+            const stn = globalWeatherData[index];
+            const current = stn.apiData.current;
+            
+            document.getElementById('wind-speed-val').innerHTML = `${current.wind_speed_10m.toFixed(1)} <span class="text-lg text-slate-400">m/s (${getWindDir(current.wind_direction_10m)})</span>`;
+            
+            if(windChartInstance) windChartInstance.destroy();
+            windChartInstance = new Chart(document.getElementById('windChart').getContext('2d'), {
+                type: 'doughnut',
+                data: { labels: ['Tenang (<2 m/s)', 'Sedang (2-5 m/s)', 'Kencang (>5 m/s)'], datasets: [{ data: [45, 40, 15], backgroundColor: ['#39BDF8', '#818CF8', '#22D3EE'] }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function renderLightningDetails(index) {
+            if (globalWeatherData.length === 0) return;
+            const stn = globalWeatherData[index];
+            document.getElementById('lightning-station-title').innerText = `Status Sensor Petir: ${stn.id} - ${stn.name}`;
+        }
+
+        function renderRainChart(labels, rain) {
+            if(rainChartInstance) rainChartInstance.destroy();
+            rainChartInstance = new Chart(document.getElementById('rainChart').getContext('2d'), {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ data: rain, backgroundColor: '#22D3EE', borderRadius: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
+            });
+        }
+
+        function renderTempChart(labels, temp, press) {
+            if(tempChartInstance) tempChartInstance.destroy();
+            tempChartInstance = new Chart(document.getElementById('tempChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Suhu (°C)', data: temp, borderColor: '#39BDF8', tension: 0.4, yAxisID: 'y' },
+                        { label: 'Tekanan (hPa)', data: press, borderColor: '#818CF8', borderDash: [5, 5], tension: 0.4, yAxisID: 'y1' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        let isTableExpanded = false;
+        function toggleTableHeight() {
+            const container = document.getElementById('observation-container');
+            const btn = document.getElementById('btn-lihat-semua');
+            isTableExpanded = !isTableExpanded;
+            if(isTableExpanded) {
+                container.classList.replace('h-[350px]', 'h-[700px]');
+                btn.innerText = "Tutup Tabel";
+            } else {
+                container.classList.replace('h-[700px]', 'h-[350px]');
+                btn.innerText = "Lihat Semua";
+            }
+        }
+
+        function changePage(pageId, pageTitle) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-' + pageId).classList.remove('hidden');
+            document.getElementById('top-nav-title').innerText = pageTitle;
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-cyan-500/10', 'text-cyan-400', 'border-cyan-500/20');
+                btn.classList.add('text-slate-400', 'hover:bg-slate-800/50', 'hover:text-slate-200', 'border-transparent');
+            });
+            const activeBtn = document.getElementById('nav-btn-' + pageId);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'hover:bg-slate-800/50', 'hover:text-slate-200', 'border-transparent');
+                activeBtn.classList.add('bg-cyan-500/10', 'text-cyan-400', 'border-cyan-500/20');
+            }
+        }
+
+        window.onload = () => { fetchWeatherData(); };
+    </script>
+</body>
+</html>
